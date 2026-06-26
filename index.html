@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0a1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cash Counter">
+<title>CASH COUNTER</title>
+<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22Cash%20Counter%22%2C%22short_name%22%3A%22Cash%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0a1a%22%2C%22theme_color%22%3A%22%230a0a1a%22%7D">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  :root {
+    --bg:#0a0a1a; --panel:#111128; --border:#00ffcc;
+    --accent:#ffe600; --pink:#ff2d78; --green:#00ff88;
+    --text:#ffffff; --dim:#8888aa; --red:#ff4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospace;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    padding:16px 12px 40px;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:998;
+    background:repeating-linear-gradient(to bottom,transparent 0px,transparent 3px,rgba(0,0,0,0.15) 3px,rgba(0,0,0,0.15) 4px)}
+
+  h1{font-size:18px;color:var(--accent);text-shadow:0 0 10px var(--accent),0 0 30px #ff880044;
+    text-align:center;letter-spacing:2px;margin-bottom:4px;animation:flicker 4s infinite}
+  .subtitle{font-size:7px;color:var(--border);text-align:center;margin-bottom:20px;letter-spacing:1px}
+  @keyframes flicker{0%,95%,100%{opacity:1}96%{opacity:.6}97%{opacity:1}98%{opacity:.4}99%{opacity:1}}
+
+  /* Progress */
+  .progress-wrap{width:100%;max-width:420px;margin-bottom:14px}
+  .progress-label{font-size:7px;color:var(--dim);margin-bottom:6px;display:flex;justify-content:space-between}
+  .progress-bar-outer{width:100%;height:12px;background:#1a1a3a;border:2px solid var(--dim);overflow:hidden}
+  .progress-bar-inner{height:100%;background:linear-gradient(90deg,var(--green),var(--border));width:0%;transition:width .4s;box-shadow:0 0 8px var(--green)}
+  .progress-bar-inner.over{background:linear-gradient(90deg,var(--pink),var(--red));box-shadow:0 0 8px var(--red)}
+
+  /* Step dots */
+  .steps{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;max-width:420px;width:100%}
+  .step-dot{width:26px;height:26px;border:2px solid var(--dim);display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .3s;cursor:pointer}
+  .step-dot.active{border-color:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .step-dot.done{border-color:var(--green);background:#001a0d}
+
+  /* Card */
+  .card{background:var(--panel);border:3px solid var(--border);
+    box-shadow:0 0 20px #00ffcc33,inset 0 0 30px #00000044;
+    padding:20px 16px;width:100%;max-width:420px;margin-bottom:14px;position:relative}
+  .card::before{content:'';position:absolute;top:4px;left:4px;right:4px;bottom:4px;border:1px solid #00ffcc22;pointer-events:none}
+  .denom-title{font-size:13px;color:var(--accent);text-align:center;margin-bottom:4px;text-shadow:0 0 8px var(--accent)}
+  .denom-value{font-size:8px;color:var(--border);text-align:center;margin-bottom:18px}
+
+  .field-group{margin-bottom:14px}
+  .field-label{font-size:7px;color:var(--dim);margin-bottom:8px;display:block}
+  .field-row{display:flex;align-items:center;gap:10px}
+  input[type="number"]{background:#0a0a1a;border:2px solid var(--border);color:var(--accent);
+    font-family:'Press Start 2P',monospace;font-size:22px;padding:14px 10px;width:100%;
+    text-align:center;outline:none;-moz-appearance:textfield;
+    box-shadow:inset 0 0 10px #00ffcc22;transition:border-color .2s,box-shadow .2s}
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none}
+  input[type="number"]:focus{border-color:var(--accent);box-shadow:inset 0 0 10px #ffe60022,0 0 12px #ffe60044}
+  .field-sub{font-size:7px;color:var(--pink);white-space:nowrap;min-width:52px;text-align:right}
+  .subtotal-line{font-size:8px;color:var(--green);text-align:right;margin-top:4px;min-height:14px}
+
+  /* Buttons row */
+  .btn-row{display:flex;gap:10px;margin-top:8px}
+  .back-btn{flex:0 0 70px;padding:16px 8px;background:transparent;color:var(--border);
+    font-family:'Press Start 2P',monospace;font-size:9px;border:2px solid var(--border);
+    cursor:pointer;letter-spacing:1px;box-shadow:3px 3px 0 #007755;transition:transform .1s,box-shadow .1s;text-align:center}
+  .back-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #007755}
+  .back-btn:disabled{opacity:.3;cursor:not-allowed}
+  .next-btn{flex:1;padding:16px;background:var(--accent);color:#0a0a1a;
+    font-family:'Press Start 2P',monospace;font-size:10px;border:none;cursor:pointer;
+    letter-spacing:1px;box-shadow:4px 4px 0 #aa9900;transition:transform .1s,box-shadow .1s;text-transform:uppercase}
+  .next-btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #aa9900}
+
+  /* Grand total */
+  .grand-total-box{width:100%;max-width:420px;border:3px solid var(--accent);padding:16px;
+    text-align:center;background:#0f0f00;box-shadow:0 0 24px #ffe60055;margin-bottom:14px}
+  .grand-total-label{font-size:7px;color:var(--dim);margin-bottom:8px;letter-spacing:2px}
+  .grand-total-amount{font-size:28px;color:var(--accent);text-shadow:0 0 16px var(--accent),0 0 40px #ffe60055;transition:font-size .4s,color .4s}
+
+  /* Summary */
+  .summary-card{width:100%;max-width:420px;margin-bottom:14px}
+  .summary-section-title{font-size:7px;color:var(--dim);border-bottom:1px solid #222244;padding-bottom:6px;margin-bottom:8px;letter-spacing:1px}
+  .summary-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;
+    font-size:8px;opacity:0;transform:translateX(-10px);transition:opacity .4s,transform .4s}
+  .summary-row.visible{opacity:1;transform:translateX(0)}
+  .summary-row.big{font-size:12px;color:var(--accent);text-shadow:0 0 6px var(--accent)}
+  .summary-row .label{color:var(--dim)}
+  .summary-row .val{color:var(--text)}
+  .summary-row.big .label,.summary-row.big .val{color:var(--accent)}
+
+  /* Verdict */
+  .verdict{width:100%;max-width:420px;padding:22px 16px;text-align:center;
+    display:none;flex-direction:column;align-items:center;gap:12px;margin-bottom:14px}
+  .verdict.show{display:flex}
+  .verdict-title{font-size:30px;animation:pulse .6s infinite alternate;letter-spacing:2px}
+  .verdict-title.winner{color:var(--green);text-shadow:0 0 20px var(--green),0 0 60px var(--green)}
+  .verdict-title.loser{color:var(--red);text-shadow:0 0 20px var(--red),0 0 60px var(--red)}
+  @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.06)}}
+  .verdict-detail{font-size:9px;color:var(--text);line-height:2}
+  .verdict-over{color:var(--red)}
+  .verdict-under{color:var(--pink)}
+
+  .total-btn{width:100%;padding:13px;background:var(--green);color:#0a0a1a;
+    font-family:'Press Start 2P',monospace;font-size:10px;border:none;cursor:pointer;
+    margin-top:6px;letter-spacing:1px;box-shadow:4px 4px 0 #007744;
+    transition:transform .1s,box-shadow .1s;text-transform:uppercase}
+  .total-btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #007744}
+
+  /* Bottom buttons */
+  .bottom-btns{width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px}
+  .play-again-btn{padding:14px;background:var(--accent);color:#0a0a1a;
+    font-family:'Press Start 2P',monospace;font-size:10px;border:none;cursor:pointer;
+    letter-spacing:1px;box-shadow:4px 4px 0 #aa9900;transition:transform .1s,box-shadow .1s;display:none}
+  .play-again-btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #aa9900}
+  .clear-btn{padding:14px;background:transparent;color:var(--pink);
+    font-family:'Press Start 2P',monospace;font-size:9px;border:2px solid var(--pink);
+    cursor:pointer;letter-spacing:1px;box-shadow:3px 3px 0 #880022;transition:transform .1s,box-shadow .1s}
+  .clear-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #880022}
+
+  /* Confirm modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;
+    display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal-box{background:var(--panel);border:3px solid var(--pink);padding:28px 20px;
+    max-width:340px;width:100%;text-align:center;box-shadow:0 0 30px #ff2d7877}
+  .modal-icon{font-size:36px;margin-bottom:14px}
+  .modal-title{font-size:11px;color:var(--pink);margin-bottom:12px;line-height:1.8}
+  .modal-sub{font-size:7px;color:var(--dim);margin-bottom:22px;line-height:2}
+  .modal-btns{display:flex;gap:10px}
+  .modal-cancel{flex:1;padding:14px;background:transparent;color:var(--border);
+    font-family:'Press Start 2P',monospace;font-size:8px;border:2px solid var(--border);cursor:pointer}
+  .modal-confirm{flex:1;padding:14px;background:var(--pink);color:#fff;
+    font-family:'Press Start 2P',monospace;font-size:8px;border:none;cursor:pointer;
+    box-shadow:3px 3px 0 #880022}
+
+  /* Coin rain */
+  .coin-rain{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:100;overflow:hidden}
+  .coin{position:absolute;top:-40px;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+
+  /* Stars */
+  .stars{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+  .star{position:absolute;width:2px;height:2px;background:white;border-radius:50%;animation:twinkle linear infinite}
+  @keyframes twinkle{0%,100%{opacity:.1}50%{opacity:.8}}
+  .content{position:relative;z-index:1;width:100%;display:flex;flex-direction:column;align-items:center}
+
+  /* Saved badge */
+  .saved-badge{font-size:7px;color:var(--green);text-align:center;margin-bottom:10px;
+    opacity:0;transition:opacity .5s;letter-spacing:1px}
+  .saved-badge.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div class="coin-rain" id="coinRain"></div>
+
+<!-- Confirm clear modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title">CLEAR EVERYTHING?</div>
+    <div class="modal-sub">This will wipe all your<br>entered amounts.<br>Cannot be undone!</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">◀ NO, GO BACK</button>
+      <button class="modal-confirm" onclick="confirmClear()">YES, CLEAR ✕</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <h1>💰 CASH COUNTER</h1>
+  <p class="subtitle">INSERT COINS TO PLAY</p>
+
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span>$0.00</span>
+      <span id="progressText">$0.00 / $100.00</span>
+      <span>$100</span>
+    </div>
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="progressBar"></div>
+    </div>
+  </div>
+
+  <div class="steps" id="stepDots"></div>
+  <div class="saved-badge" id="savedBadge">✔ PROGRESS SAVED</div>
+
+  <div class="card" id="inputCard">
+    <div class="denom-title" id="denomTitle"></div>
+    <div class="denom-value" id="denomValue"></div>
+    <div class="field-group">
+      <label class="field-label">HOW MANY?</label>
+      <div class="field-row">
+        <input type="number" id="mainInput" min="0" placeholder="0" inputmode="numeric">
+        <div class="field-sub" id="mainSub"></div>
+      </div>
+      <div class="subtotal-line" id="mainSubtotal"></div>
+    </div>
+    <div class="btn-row">
+      <button class="back-btn" id="backBtn" onclick="goBack()">◀ BACK</button>
+      <button class="next-btn" id="nextBtn" onclick="onNext()">▶ NEXT</button>
+    </div>
+    <button class="total-btn" onclick="totalNow()">💰 TOTAL NOW</button>
+  </div>
+
+  <div class="grand-total-box">
+    <div class="grand-total-label">— GRAND TOTAL —</div>
+    <div class="grand-total-amount" id="grandTotalAmount">$0.00</div>
+  </div>
+
+  <div class="summary-card" id="summaryCard"></div>
+
+  <div class="verdict" id="verdict">
+    <div class="verdict-title" id="verdictTitle"></div>
+    <div class="verdict-detail" id="verdictDetail"></div>
+  </div>
+
+  <div class="bottom-btns">
+    <button class="play-again-btn" id="playAgainBtn" onclick="playAgain()">↺ PLAY AGAIN</button>
+    <button class="clear-btn" onclick="openModal()">✕ CLEAR ALL &amp; START OVER</button>
+  </div>
+</div>
+
+<script>
+// PWA service worker
+if ('serviceWorker' in navigator) {
+  const sw = `self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(clients.claim()));self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>new Response(''))));`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+
+const DENOMS = [
+  { id:'nickel_l',  label:'LOOSE NICKELS',  emoji:'🟡', value:0.05,  desc:'× $0.05 each' },
+  { id:'dime_l',    label:'LOOSE DIMES',     emoji:'⚪', value:0.10,  desc:'× $0.10 each' },
+  { id:'quarter_l', label:'LOOSE QUARTERS',  emoji:'🔵', value:0.25,  desc:'× $0.25 each' },
+  { id:'nickel_r',  label:'NICKEL ROLLS',    emoji:'🟡', value:2.00,  desc:'× $2.00 per roll' },
+  { id:'dime_r',    label:'DIME ROLLS',      emoji:'⚪', value:5.00,  desc:'× $5.00 per roll' },
+  { id:'quarter_r', label:'QUARTER ROLLS',   emoji:'🔵', value:10.00, desc:'× $10.00 per roll' },
+  { id:'one',       label:'$1 BILLS',        emoji:'💵', value:1.00,  desc:'× $1.00 each' },
+  { id:'five',      label:'$5 BILLS',        emoji:'💵', value:5.00,  desc:'× $5.00 each' },
+  { id:'ten',       label:'$10 BILLS',       emoji:'💵', value:10.00, desc:'× $10.00 each' },
+  { id:'twenty',    label:'$20 BILLS',       emoji:'💵', value:20.00, desc:'× $20.00 each' },
+  { id:'fifty',     label:'$50 BILLS',       emoji:'💵', value:50.00, desc:'× $50.00 each' },
+  { id:'hundred',   label:'$100 BILLS',      emoji:'💵', value:100.00,desc:'× $100.00 each' },
+];
+
+const SAVE_KEY = 'cashcounter_v1';
+let current = 0, entries = {}, finished = false;
+
+// ── Save / Load ──────────────────────────────────────────────────────────
+function saveState() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ current, entries, finished }));
+    const badge = document.getElementById('savedBadge');
+    badge.classList.add('show');
+    setTimeout(() => badge.classList.remove('show'), 1500);
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    current = s.current || 0;
+    entries = s.entries || {};
+    finished = s.finished || false;
+    return true;
+  } catch(e) { return false; }
+}
+
+function clearState() {
+  try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+function init() {
+  buildStars();
+  buildStepDots();
+  const hadSave = loadState();
+  if (hadSave && finished) {
+    rebuildSummary();
+    showVerdict(grandTotal());
+    document.getElementById('inputCard').style.display = 'none';
+    document.getElementById('stepDots').style.display = 'none';
+    document.getElementById('playAgainBtn').style.display = 'block';
+  } else {
+    rebuildSummary();
+    loadStep(current);
+    renderGrandTotal(grandTotal());
+    updateProgress(grandTotal());
+  }
+
+  document.getElementById('mainInput').addEventListener('input', onInputChange);
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') onNext(); });
+}
+
+function grandTotal() {
+  return Object.values(entries).reduce((s,e) => s + e.total, 0);
+}
+
+// ── Stars ────────────────────────────────────────────────────────────────
+function buildStars() {
+  const c = document.getElementById('stars');
+  for (let i=0;i<60;i++) {
+    const s = document.createElement('div'); s.className = 'star';
+    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-duration:${2+Math.random()*4}s;animation-delay:${Math.random()*4}s`;
+    c.appendChild(s);
+  }
+}
+
+// ── Step dots ────────────────────────────────────────────────────────────
+function buildStepDots() {
+  const c = document.getElementById('stepDots'); c.innerHTML = '';
+  DENOMS.forEach((d,i) => {
+    const dot = document.createElement('div');
+    dot.className = 'step-dot'; dot.id = 'dot-'+i; dot.textContent = d.emoji;
+    dot.onclick = () => jumpTo(i);
+    c.appendChild(dot);
+  });
+}
+
+function updateDots() {
+  DENOMS.forEach((_,i) => {
+    const dot = document.getElementById('dot-'+i);
+    dot.classList.remove('active','done');
+    if (i < current) dot.classList.add('done');
+    else if (i === current) dot.classList.add('active');
+  });
+}
+
+function jumpTo(idx) {
+  // Only allow jumping to already-visited steps
+  if (idx >= current) return;
+  commitCurrentInput();
+  loadStep(idx);
+}
+
+// ── Load step ────────────────────────────────────────────────────────────
+function loadStep(idx) {
+  current = idx; updateDots();
+  const d = DENOMS[idx];
+  document.getElementById('denomTitle').textContent = d.emoji + ' ' + d.label;
+  document.getElementById('denomValue').textContent = d.desc;
+  document.getElementById('mainSub').textContent = '× $' + d.value.toFixed(2);
+
+  // Pre-fill if we already have a value for this step
+  const saved = entries[d.id];
+  const inp = document.getElementById('mainInput');
+  inp.value = saved ? saved.qty : '';
+  const val = saved ? saved.total : 0;
+  document.getElementById('mainSubtotal').textContent = val > 0 ? '= $' + val.toFixed(2) : '';
+
+  const btn = document.getElementById('nextBtn');
+  btn.textContent = idx < DENOMS.length - 1 ? '▶ NEXT: ' + DENOMS[idx+1].label : '✔ FINISH & TOTAL';
+
+  const backBtn = document.getElementById('backBtn');
+  backBtn.disabled = idx === 0;
+
+  setTimeout(() => inp.focus(), 100);
+}
+
+// ── Input change ─────────────────────────────────────────────────────────
+function onInputChange() {
+  const qty = Math.max(0, parseFloat(document.getElementById('mainInput').value) || 0);
+  const val = qty * DENOMS[current].value;
+  document.getElementById('mainSubtotal').textContent = val > 0 ? '= $' + val.toFixed(2) : '';
+  // Preview total with current field
+  const preview = val + grandTotalExcluding(DENOMS[current].id);
+  renderGrandTotal(preview);
+  updateProgress(preview);
+}
+
+function grandTotalExcluding(id) {
+  return Object.entries(entries).reduce((s,[k,e]) => k === id ? s : s + e.total, 0);
+}
+
+// ── Commit current input without advancing ────────────────────────────────
+function commitCurrentInput() {
+  const d = DENOMS[current];
+  const qty = Math.max(0, parseFloat(document.getElementById('mainInput').value) || 0);
+  entries[d.id] = { qty, total: qty * d.value };
+}
+
+// ── Next ─────────────────────────────────────────────────────────────────
+function onNext() {
+  commitCurrentInput();
+  rebuildSummary();
+  renderGrandTotal(grandTotal());
+  updateProgress(grandTotal());
+  saveState();
+
+  if (current < DENOMS.length - 1) {
+    loadStep(current + 1);
+  } else {
+    finished = true;
+    saveState();
+    document.getElementById('inputCard').style.display = 'none';
+    document.getElementById('stepDots').style.display = 'none';
+    document.getElementById('playAgainBtn').style.display = 'block';
+    showVerdict(grandTotal());
+  }
+}
+
+// ── Back ─────────────────────────────────────────────────────────────────
+function goBack() {
+  if (current === 0) return;
+  commitCurrentInput();
+  rebuildSummary();
+  saveState();
+  loadStep(current - 1);
+}
+
+// ── Render total ──────────────────────────────────────────────────────────
+function renderGrandTotal(amount) {
+  const el = document.getElementById('grandTotalAmount');
+  el.textContent = '$' + amount.toFixed(2);
+  if (amount >= 100) el.style.cssText = 'font-size:36px;color:var(--green);text-shadow:0 0 20px var(--green)';
+  else if (amount >= 50) el.style.cssText = 'font-size:32px;color:var(--accent);text-shadow:0 0 16px var(--accent)';
+  else if (amount >= 20) el.style.cssText = 'font-size:28px;color:var(--accent);text-shadow:0 0 16px var(--accent)';
+  else el.style.cssText = 'font-size:22px;color:var(--accent);text-shadow:0 0 16px var(--accent)';
+}
+
+function updateProgress(amount) {
+  const bar = document.getElementById('progressBar');
+  bar.style.width = Math.min((amount / 100) * 100, 100) + '%';
+  amount > 100 ? bar.classList.add('over') : bar.classList.remove('over');
+  document.getElementById('progressText').textContent = '$' + amount.toFixed(2) + ' / $100.00';
+}
+
+// ── Summary (rebuild from scratch each time) ──────────────────────────────
+function rebuildSummary() {
+  const card = document.getElementById('summaryCard');
+  card.innerHTML = '';
+  let addedCoin = false, addedRoll = false, addedBill = false;
+
+  DENOMS.forEach(d => {
+    const e = entries[d.id];
+    if (!e || e.total === 0) return;
+
+    const isRoll = d.id.endsWith('_r');
+    const isBill = ['one','five','ten','twenty','fifty','hundred'].includes(d.id);
+    const isCoin = d.id.endsWith('_l');
+
+    if (isCoin && !addedCoin) {
+      addSection(card, '— COINS —', 'coins-title'); addedCoin = true;
+    }
+    if (isRoll && !addedRoll) {
+      addSection(card, '— ROLLS —', 'rolls-title'); addedRoll = true;
+    }
+    if (isBill && !addedBill) {
+      addSection(card, '— BILLS —', 'bills-title'); addedBill = true;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'summary-row visible' + (e.total >= 20 ? ' big' : '');
+    row.innerHTML = `<span class="label">${d.emoji} ${d.label}</span><span class="val">$${e.total.toFixed(2)}</span>`;
+    card.appendChild(row);
+  });
+}
+
+function addSection(card, text, cls) {
+  const t = document.createElement('div');
+  t.className = 'summary-section-title ' + cls;
+  t.textContent = text;
+  card.appendChild(t);
+}
+
+// ── Verdict ───────────────────────────────────────────────────────────────
+function showVerdict(total) {
+  document.getElementById('verdict').classList.add('show');
+  const diff = Math.abs(total - 100), diffStr = '$' + diff.toFixed(2);
+  const title = document.getElementById('verdictTitle'), detail = document.getElementById('verdictDetail');
+  if (diff < 0.005) {
+    title.textContent = '🏆 WINNER!'; title.className = 'verdict-title winner';
+    detail.innerHTML = 'EXACT CHANGE!<br>YOU HIT $100.00!'; launchCoins();
+  } else if (total > 100) {
+    title.textContent = '❌ LOSER'; title.className = 'verdict-title loser';
+    detail.innerHTML = `YOU'RE <span class="verdict-over">OVER</span> BY<br><span class="verdict-over">${diffStr}</span>`;
+  } else {
+    title.textContent = '❌ LOSER'; title.className = 'verdict-title loser';
+    detail.innerHTML = `YOU'RE <span class="verdict-under">UNDER</span> BY<br><span class="verdict-under">${diffStr}</span>`;
+  }
+}
+
+function launchCoins() {
+  const c = document.getElementById('coinRain'), emojis = ['💰','🪙','💵','⭐','✨','🏆'];
+  for (let i=0;i<40;i++) setTimeout(()=>{
+    const coin = document.createElement('div'); coin.className = 'coin';
+    coin.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    const dur = 1.5 + Math.random()*2;
+    coin.style.cssText = `left:${Math.random()*100}%;font-size:${16+Math.random()*20}px;animation:fall ${dur}s linear forwards`;
+    c.appendChild(coin); setTimeout(()=>coin.remove(), dur*1000+100);
+  }, i*80);
+}
+
+// ── Total Now ─────────────────────────────────────────────────────────────
+function totalNow() {
+  commitCurrentInput();
+  finished = true;
+  saveState();
+  rebuildSummary();
+  renderGrandTotal(grandTotal());
+  updateProgress(grandTotal());
+  document.getElementById('inputCard').style.display = 'none';
+  document.getElementById('stepDots').style.display = 'none';
+  document.getElementById('playAgainBtn').style.display = 'block';
+  showVerdict(grandTotal());
+}
+
+// ── Play again (keeps total target, just restarts input flow) ─────────────
+function playAgain() {
+  entries = {}; current = 0; finished = false;
+  clearState();
+  document.getElementById('verdict').classList.remove('show');
+  document.getElementById('playAgainBtn').style.display = 'none';
+  document.getElementById('inputCard').style.display = 'block';
+  document.getElementById('stepDots').style.display = 'flex';
+  rebuildSummary();
+  renderGrandTotal(0); updateProgress(0); loadStep(0);
+}
+
+// ── Clear modal ───────────────────────────────────────────────────────────
+function openModal() { document.getElementById('modalOverlay').classList.add('show'); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+function confirmClear() {
+  closeModal(); playAgain();
+}
+
+init();
+</script>
+</body>
+</html>
